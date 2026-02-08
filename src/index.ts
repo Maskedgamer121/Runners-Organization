@@ -7,6 +7,14 @@ import {
   PartialMessage
 } from 'discord.js';
 import 'dotenv/config';
+import http from 'http';
+
+// --- KEEP-ALIVE WEB SERVER ---
+// This allows free hosts to "ping" the bot so it stays online 24/7.
+http.createServer((req, res) => {
+  res.write("Runners Org Bot is Online");
+  res.end();
+}).listen(8080); 
 
 const client = new Client({
   intents: [
@@ -26,8 +34,8 @@ const ARCHIVIST_RUNNER_ID = '1465730843090616448';
 const PROMO_LOG_CHANNEL_ID = '1462640325712547997';
 const LOG_CHANNEL_ID = '1469817201904058430'; 
 
-client.on('clientReady', (c) => {
-  console.log(`${c.user.tag} is operational.`);
+client.on('ready', (c) => {
+  console.log(`${c.user.tag} is operational and web server is live.`);
 });
 
 // Logging: Message Delete
@@ -88,6 +96,7 @@ client.on('messageCreate', async (message: Message) => {
 
   if (!isStaff) return;
 
+  // We cast the channel as a TextChannel to prevent TypeScript "send" errors
   const textChannel = message.channel as TextChannel;
 
   // SAY COMMAND
@@ -105,7 +114,6 @@ client.on('messageCreate', async (message: Message) => {
     const hours = Math.floor(uptime / 3600000) % 24;
     const minutes = Math.floor(uptime / 60000) % 60;
     const seconds = Math.floor(uptime / 1000) % 60;
-
     const memory = process.memoryUsage().heapUsed / 1024 / 1024;
 
     const infoEmbed = new EmbedBuilder()
@@ -128,7 +136,7 @@ client.on('messageCreate', async (message: Message) => {
     if (isNaN(seconds)) return message.reply('Usage: !slow <seconds>');
     try {
       await textChannel.setRateLimitPerUser(seconds);
-      return message.reply(`Slowmode: ${seconds}s.`);
+      return message.reply(`Slowmode set to ${seconds}s.`);
     } catch (err) { return message.reply('Missing permissions.'); }
   }
 
@@ -139,8 +147,8 @@ client.on('messageCreate', async (message: Message) => {
       .addFields(
         { name: '!promote <@user>', value: 'Rank advancement.' },
         { name: '!demote <@user>', value: 'Rank reversion.' },
-        { name: '!say <text>', value: 'Make the bot speak (Deletes original).' },
-        { name: '!botinfo', value: 'Check bot status.' },
+        { name: '!say <text>', value: 'Bot speaks & deletes command.' },
+        { name: '!botinfo', value: 'Check bot diagnostics.' },
         { name: '!slow <seconds>', value: 'Update slowmode.' }
       );
     return message.reply({ embeds: [helpEmbed] });
@@ -162,7 +170,7 @@ client.on('messageCreate', async (message: Message) => {
         const nextRole = message.guild.roles.cache.find(r => r.name === nextRoleName);
         if (nextRole) {
           await target.roles.add(nextRole);
-          message.reply(`${target.user.username} -> ${nextRoleName}.`);
+          message.reply(`${target.user.username} updated to ${nextRoleName}.`);
           if (command === 'promote') {
             const promoChannel = client.channels.cache.get(PROMO_LOG_CHANNEL_ID) as TextChannel;
             if (promoChannel) {
@@ -177,7 +185,7 @@ client.on('messageCreate', async (message: Message) => {
           }
         }
       } else {
-        return message.reply(nextIndex < 0 ? "Ranks cleared." : "Max rank reached.");
+        return message.reply(nextIndex < 0 ? "Ranks cleared." : "Maximum rank reached.");
       }
     } catch (err) { return message.reply("Failed to update roles."); }
   }
